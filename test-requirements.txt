@@ -1,0 +1,8 @@
+-r requirements.txt
+
+nose
+mock
+httpretty
+
+-i http://cheesebox:cheese123!@cheeseshop.rockaboxmedia.com/stable/
+rest_client_builder==1.0.4

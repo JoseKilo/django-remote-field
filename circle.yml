@@ -1,0 +1,24 @@
+general:
+  branches:
+    ignore:
+      # do not rebuild branches we fast-forward to develop
+      - stable/develop
+      - /deploy\/.*/
+      - master
+
+## Customize the test machine
+machine:
+  timezone:
+    Europe/London
+  python:
+    version: 2.7.3
+
+## Customize dependencies
+dependencies:
+  override:
+    - pip install -r test-requirements.txt
+
+## Customize test commands
+test:
+  override:
+    - ./runtests/run.py

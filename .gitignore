@@ -1,0 +1,8 @@
+*.pyc
+.ropeproject
+build/
+dist/
+.rbxvenv/
+docs/_build/
+.venv/
+*.pyc
