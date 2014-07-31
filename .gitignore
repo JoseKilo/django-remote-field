@@ -6,3 +6,4 @@ dist/
 docs/_build/
 .venv/
 *.pyc
+django_remote_field.egg-info/
