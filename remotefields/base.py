@@ -21,7 +21,9 @@ class RemoteField(Field):
 
     def __init__(self, endpoints, remote_sources, *args, **kwargs):
         """
-        :param source: Standard DRF argument. Source of data to fill the field
+        :param args: Standard DRF arguments
+        :param kwargs: Standard DRF arguments. It will contain 'source':
+                       the source of data to fill the field
         :param endpoints: Dictionary containing 'list' and 'detail' endpoints
         :param remote_sources: Field names to retrieve from the remote service
         """
