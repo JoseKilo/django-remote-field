@@ -1,0 +1,4 @@
+Original runtests/:
+https://github.com/tomchristie/django-rest-framework/blob/2.3.13/rest_framework/runtests/runtests.py
+
+Run with: python runtests.py
