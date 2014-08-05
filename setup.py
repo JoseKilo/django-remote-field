@@ -7,7 +7,7 @@ except ImportError:
 
 setup(
     name='django_remote_field',
-    version='1.0.0',
+    version='1.0.1',
     author='rockabox',
     author_email='tech@rockabox.com',
     packages=['remotefields'],
