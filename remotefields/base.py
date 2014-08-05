@@ -1,7 +1,7 @@
-from rest_framework.fields import Field
+from rest_framework.fields import WritableField
 
 
-class RemoteField(Field):
+class RemoteField(WritableField):
     """
     Custom field to be included within a serializer extending
     RemoteFieldsModelSerializerMixin (check below). It is used only to store
@@ -18,24 +18,31 @@ class RemoteField(Field):
 
     endpoints = None
     remote_sources = None
+    flat = False
 
-    def __init__(self, endpoints, remote_sources, *args, **kwargs):
+    def __init__(self, endpoints, remote_sources,
+                 flat=False, *args, **kwargs):
         """
         :param args: Standard DRF arguments
         :param kwargs: Standard DRF arguments. It will contain 'source':
                        the source of data to fill the field
         :param endpoints: Dictionary containing 'list' and 'detail' endpoints
         :param remote_sources: Field names to retrieve from the remote service
+        :param flat: Boolean indicating if it is a flat or nested structure
         """
+        if flat and len(remote_sources) > 1:
+            raise ValueError('Flat fields can only specify a remote_source')
+
         self.endpoints = endpoints
         self.remote_sources = remote_sources
+        self.flat = flat
         super(RemoteField, self).__init__(*args, **kwargs)
 
     def field_to_native(self, obj, field_name):
         """
         The serializer class will fill this field content later
         """
-        pass
+        return getattr(obj, field_name, None)
 
 
 class RemoteFieldsModelSerializerMixin(object):
@@ -112,24 +119,35 @@ class RemoteFieldsModelSerializerMixin(object):
 
             for local_object in self._data:
                 remote_pk = local_object[remote_field.source]
-                remote_object = remote_objects_data[remote_pk]
+                try:
+                    remote_object = remote_objects_data[remote_pk]
 
-                local_object[local_field_name] = self._fill_remote_field(
-                    remote_field, remote_object)
+                    local_object[local_field_name] = self._fill_remote_field(
+                        remote_field, remote_object)
+                except KeyError:
+                    local_object[local_field_name] = None
         return data
 
     def _add_remote_fields_to_obj(self, data):
         for local_field_name, remote_field in self.get_remote_fields():
             detail_endpoint = remote_field.endpoints['detail']
 
-            pk = data[remote_field.source]
-            remote_object = detail_endpoint(pk=pk)
+            try:
+                pk = data[remote_field.source]
+                remote_object = detail_endpoint(pk=pk)
 
-            data[local_field_name] = self._fill_remote_field(
-                remote_field, remote_object)
+                data[local_field_name] = self._fill_remote_field(
+                    remote_field, remote_object)
+
+            except (KeyError, ValueError):
+                data[local_field_name] = None
         return data
 
     def _fill_remote_field(self, remote_field, remote_object):
+        if remote_field.flat:
+            field_name = remote_field.remote_sources[0]
+            return remote_object[field_name]
+
         remote_object_fields = {}
         for field_name in remote_field.remote_sources:
             remote_field_value = remote_object[field_name]

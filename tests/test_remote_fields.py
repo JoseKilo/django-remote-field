@@ -1,4 +1,5 @@
 import mock
+import re
 from unittest import TestCase
 
 import httpretty
@@ -31,6 +32,21 @@ class TestSerializer(RemoteFieldsModelSerializerMixin,
         fields = ('id', 'thing')
 
 
+class TestSerializerWithFlatField(RemoteFieldsModelSerializerMixin,
+                                  serializers.ModelSerializer):
+    thing_name = RemoteField(
+        source='thing_id', remote_sources=('name',), flat=True,
+        endpoints={
+            'list': client.some.endpoint_list,
+            'detail': client.some.endpoint_detail
+        }
+    )
+
+    class Meta:
+        model = ModelForTest
+        fields = ('id', 'thing_name')
+
+
 class RemoteFieldsTest(TestCase):
 
     @classmethod
@@ -44,9 +60,10 @@ class RemoteFieldsTest(TestCase):
         httpretty.enable()
         httpretty.register_uri(
             httpretty.GET,
-            'http://127.0.0.1:9191/some/endpoint-detail/?pk=2001',
+            re.compile('http://127.0.0.1:9191/some/endpoint-detail/\?pk=2001'),
             status=200,
-            body='{"id": 2001, "name": "Name of the thing"}'
+            body='{"id": 2001, "name": "Name of the thing"}',
+            match_querystring=True
         )
         httpretty.register_uri(
             httpretty.GET,
@@ -57,9 +74,10 @@ class RemoteFieldsTest(TestCase):
         )
         httpretty.register_uri(
             httpretty.GET,
-            'http://127.0.0.1:9191/some/endpoint-detail/?pk=0',
+            re.compile('http://127.0.0.1:9191/some/endpoint-detail/\?pk=0'),
             status=400,
-            body='{"detail": "Invalid request"}'
+            body='{"detail": "Invalid request"}',
+            match_querystring=True
         )
 
     @classmethod
@@ -77,11 +95,13 @@ class RemoteFieldsTest(TestCase):
         Try to serialize an empty set of data, expect an error to be raised
         """
         serializer = TestSerializer()
+        expected = {'thing': None}
 
-        with self.assertRaises(ValueError):
-            with mock.patch.dict(
-                    'rest_client.client.ENDPOINTS', self.endpoints):
-                serializer.data
+        with mock.patch.dict(
+                'rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertEquals(result, expected)
 
     def test_valid_model_instance(self):
         """
@@ -91,7 +111,7 @@ class RemoteFieldsTest(TestCase):
         model_instance.save()
         serializer = TestSerializer(model_instance)
         expected = {'id': 1,
-                    'thing': {'id': 2001, 'name': u'Name of the thing'}}
+                    'thing': {'id': 2001, 'name': 'Name of the thing'}}
 
         with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
             result = serializer.data
@@ -109,6 +129,51 @@ class RemoteFieldsTest(TestCase):
         expected = [
             {'id': 1, 'thing': {'id': 2002, 'name': 'Name of the thing'}},
             {'id': 2, 'thing': {'id': 2003, 'name': 'Name of another thing'}}
+        ]
+
+        with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertEquals(result, expected)
+
+    def test_empty_data_with_flat_field(self):
+        """
+        Try to serialize an empty set of data, expect an error to be raised
+        """
+        serializer = TestSerializerWithFlatField()
+        expected = {'thing_name': None}
+
+        with mock.patch.dict(
+                'rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertEquals(result, expected)
+
+    def test_valid_model_instance_with_flat_field(self):
+        """
+        Serialize a valid model with a remote field and check the result
+        """
+        model_instance = ModelForTest(thing_id=2001)
+        model_instance.save()
+        serializer = TestSerializerWithFlatField(model_instance)
+        expected = {'id': 1, 'thing_name': 'Name of the thing'}
+
+        with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertEquals(result, expected)
+
+    def test_valid_model_queryset_with_flat_field(self):
+        """
+        Serialize a queryset with a remote field and check the result
+        """
+        ModelForTest(thing_id=2002).save()
+        ModelForTest(thing_id=2003).save()
+        query = ModelForTest.objects.all()
+        serializer = TestSerializerWithFlatField(query)
+        expected = [
+            {'id': 1, 'thing_name': 'Name of the thing'},
+            {'id': 2, 'thing_name': 'Name of another thing'}
         ]
 
         with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
