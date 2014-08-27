@@ -92,11 +92,11 @@ class RemoteFieldsTest(TestCase):
             'http://127.0.0.1:9191/some/endpoint-list/',
             status=200,
             body=('['
-                  '{"id": 2001, "name": "Name of the thing"}, '
-                  '{"id": 2002, "name": "Name of the thing"}, '
-                  '{"id": 2003, "name": "Name of another thing"}, '
-                  '{"id": 2004, "name": "Name of the thing"}, '
-                  '{"id": 2005, "name": "Name of the thing"}'
+                  '{"id": 2001, "name": "Name 1"}, '
+                  '{"id": 2002, "name": "Name 2"}, '
+                  '{"id": 2003, "name": "Name 3"}, '
+                  '{"id": 2004, "name": "Name 4"}, '
+                  '{"id": 2005, "name": "Name 5"}'
                   ']')
         )
         httpretty.register_uri(
@@ -154,8 +154,8 @@ class RemoteFieldsTest(TestCase):
         query = ModelForTest.objects.all()
         serializer = TestSerializer(query)
         expected = [
-            {'id': 1, 'thing': {'id': 2002, 'name': 'Name of the thing'}},
-            {'id': 2, 'thing': {'id': 2003, 'name': 'Name of another thing'}}
+            {'id': 1, 'thing': {'id': 2002, 'name': 'Name 2'}},
+            {'id': 2, 'thing': {'id': 2003, 'name': 'Name 3'}}
         ]
 
         with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
@@ -199,8 +199,8 @@ class RemoteFieldsTest(TestCase):
         query = ModelForTest.objects.all()
         serializer = TestSerializerWithFlatField(query)
         expected = [
-            {'id': 1, 'thing_name': 'Name of the thing'},
-            {'id': 2, 'thing_name': 'Name of another thing'}
+            {'id': 1, 'thing_name': 'Name 2'},
+            {'id': 2, 'thing_name': 'Name 3'}
         ]
 
         with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
@@ -282,7 +282,7 @@ class RemoteFieldsTest(TestCase):
         expected = [
             {'id': 1,
              'test_instances': [
-                 {'id': 2, 'thing': {'id': 2005, 'name': 'Name of the thing'}}
+                 {'id': 2, 'thing': {'id': 2005, 'name': 'Name 5'}}
              ]},
             {'id': 2, 'test_instances': []}
         ]
