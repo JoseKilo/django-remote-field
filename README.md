@@ -12,7 +12,7 @@ which fields need to be retrieved from which service.
 The complete serializer should look like the following example:
 
     class MySerializer(RemoteFieldsModelSerializerMixin,
-                    serializers.ModerlSerializer):
+                       serializers.ModerlSerializer):
 
         thing = RemoteField(
             source='thing_id', remote_sources=('id', 'name',)
@@ -28,3 +28,14 @@ The complete serializer should look like the following example:
 
 Where each endpoint is expressed using the `rest_client` library.
 More info: https://github.com/rockabox/rest_client_builder
+
+
+You can also define a nested structure of serializers containing RemoteFields:
+
+    class ParentTestSerializer(RemoteFieldsModelSerializerMixin,
+                               serializers.ModelSerializer):
+        test_instances = MySerializer(many=True)
+
+        class Meta:
+            model = ParentModelForTest
+            fields = ('id', 'test_instances')

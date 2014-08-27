@@ -1,4 +1,5 @@
 from rest_framework.fields import WritableField
+from rest_framework.serializers import is_simple_callable
 
 
 class RemoteField(WritableField):
@@ -42,7 +43,7 @@ class RemoteField(WritableField):
         """
         The serializer class will fill this field content later
         """
-        return getattr(obj, field_name, None)
+        return getattr(obj, self.source, None)
 
 
 class RemoteFieldsModelSerializerMixin(object):
@@ -73,6 +74,22 @@ class RemoteFieldsModelSerializerMixin(object):
     Where each endpoint is expressed using the rest_client library.
     More info: https://github.com/rockabox/rest_client_builder
     """
+
+    def to_native(self, obj):
+        """
+        Serialize objects -> primitives.
+        """
+        if is_simple_callable(getattr(obj, 'all', None)):
+            ret = [super(RemoteFieldsModelSerializerMixin, self).to_native(i)
+                   for i in obj.all()]
+        else:
+            ret = super(RemoteFieldsModelSerializerMixin, self).to_native(obj)
+
+        for field_name, field in self.get_remote_serializers():
+            obj_field = getattr(obj, field_name, None)
+            ret[field_name] = field.__class__(obj_field).data
+
+        return ret
 
     @property
     def data(self):
@@ -105,6 +122,11 @@ class RemoteFieldsModelSerializerMixin(object):
         all_fields = self.get_fields()
         return [(field_name, field) for field_name, field in all_fields.items()
                 if isinstance(field, RemoteField)]
+
+    def get_remote_serializers(self):
+        all_fields = self.get_fields()
+        return [(field_name, field) for field_name, field in all_fields.items()
+                if isinstance(field, RemoteFieldsModelSerializerMixin)]
 
     def _add_remote_fields_to_list(self, data):
         for local_field_name, remote_field in self.get_remote_fields():
