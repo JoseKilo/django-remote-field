@@ -35,11 +35,19 @@ class TestSerializer(RemoteFieldsModelSerializerMixin,
 class ParentTestSerializer(RemoteFieldsModelSerializerMixin,
                            serializers.ModelSerializer):
     test_instance = TestSerializer()
+
+    class Meta:
+        model = ParentModelForTest
+        fields = ('id', 'test_instance')
+
+
+class ParentWithManyTestSerializer(RemoteFieldsModelSerializerMixin,
+                                   serializers.ModelSerializer):
     test_instances = TestSerializer(many=True)
 
     class Meta:
         model = ParentModelForTest
-        fields = ('id', 'test_instance', 'test_instances')
+        fields = ('id', 'test_instances')
 
 
 class TestSerializerWithFlatField(RemoteFieldsModelSerializerMixin,
@@ -209,7 +217,6 @@ class RemoteFieldsTest(TestCase):
             test_instance=model_instance)
         serializer = ParentTestSerializer(parent_model_instance)
         expected = {'id': 1,
-                    'test_instances': [],
                     'test_instance': {
                         'id': 1,
                         'thing': {'id': 2001, 'name': 'Name of the thing'}}}
@@ -233,14 +240,51 @@ class RemoteFieldsTest(TestCase):
         expected = [
             {'id': 1,
              'test_instance': {
-                 'id': 1, 'thing': {'id': 2004, 'name': 'Name of the thing'}},
+                 'id': 1, 'thing': {'id': 2004, 'name': 'Name of the thing'}}},
+            {'id': 2,
+             'test_instance': {
+                 'id': 2, 'thing': {'id': 2005, 'name': 'Name of the thing'}}},
+        ]
+
+        with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertDictEqual(result[0], expected[0])
+        self.assertDictEqual(result[1], expected[1])
+
+    def test_valid_model_instance_with_nested_many(self):
+        """
+        Serialize a valid model with a nested serializer and check the result
+        """
+        model_instance = ModelForTest.objects.create(thing_id=2001)
+        parent_model_instance = ParentModelForTest.objects.create(
+            test_instance=model_instance)
+        serializer = ParentWithManyTestSerializer(parent_model_instance)
+        expected = {'id': 1,
+                    'test_instances': []}
+
+        with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertDictEqual(result, expected)
+
+    def test_valid_model_queryset_with_nested_many(self):
+        """
+        Serialize a queryset with a nested serializer and check the result
+        """
+        model_instance_1 = ModelForTest.objects.create(thing_id=2004)
+        model_instance_2 = ModelForTest.objects.create(thing_id=2005)
+        obj = ParentModelForTest.objects.create(test_instance=model_instance_1)
+        obj.test_instances.add(model_instance_2)
+        ParentModelForTest.objects.create(test_instance=model_instance_2)
+        query = ParentModelForTest.objects.all()
+        serializer = ParentWithManyTestSerializer(query)
+        expected = [
+            {'id': 1,
              'test_instances': [
                  {'id': 2, 'thing': {'id': 2005, 'name': 'Name of the thing'}}
              ]},
-            {'id': 2,
-             'test_instance': {
-                 'id': 2, 'thing': {'id': 2005, 'name': 'Name of the thing'}},
-             'test_instances': []},
+            {'id': 2, 'test_instances': []}
         ]
 
         with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
