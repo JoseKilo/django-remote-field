@@ -154,12 +154,20 @@ class RemoteFieldsModelSerializerMixin(object):
         for local_field_name, remote_field in self.get_remote_fields():
             detail_endpoint = remote_field.endpoints['detail']
 
+            if (local_field_name in data and
+                    isinstance(data[remote_field.source], dict)):
+                data[local_field_name] = data[remote_field.source]
+                continue
+
             try:
                 pk = data[remote_field.source]
-                remote_object = detail_endpoint(pk=pk)
+                if pk is None:
+                    data[local_field_name] = None
+                else:
+                    remote_object = detail_endpoint(pk=pk)
 
-                data[local_field_name] = self._fill_remote_field(
-                    remote_field, remote_object)
+                    data[local_field_name] = self._fill_remote_field(
+                        remote_field, remote_object)
 
             except (KeyError, ValueError):
                 data[local_field_name] = None
