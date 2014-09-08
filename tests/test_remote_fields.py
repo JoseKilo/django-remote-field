@@ -145,6 +145,37 @@ class RemoteFieldsTest(TestCase):
 
         self.assertEqual(result, expected)
 
+    def test_parse_data(self):
+        """
+        Simulate what happens on a POST call
+        """
+        data = {'id': 1, 'thing_id': 2001}
+        serializer = TestSerializer(data)
+        expected = {'id': 1,
+                    'thing': {'id': 2001, 'name': 'Name of the thing'}}
+
+        with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertEqual(result, expected)
+
+    def test_parse_already_expanded_data(self):
+        """
+        Simulate what happens on a POST call
+
+        This behaviour has been seen on Django Rest Framework == 2.3.14
+        """
+        data = {'id': 1,
+                'thing_id': {'id': 2001, 'name': 'Name of the thing'}}
+        serializer = TestSerializer(data)
+        expected = {'id': 1,
+                    'thing': {'id': 2001, 'name': 'Name of the thing'}}
+
+        with mock.patch.dict('rest_client.client.ENDPOINTS', self.endpoints):
+            result = serializer.data
+
+        self.assertEqual(result, expected)
+
     def test_valid_model_queryset(self):
         """
         Serialize a queryset with a remote field and check the result
